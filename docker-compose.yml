@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # 1. Apache Load Balancer
+  httpcont1:
+    build: ./apache
+    image: novacart-proxy:v1
+    container_name: httpcont1
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - tom1cont
+      - tom2cont
+      - tom3cont
+    networks:
+      - nova-net
+
+  # 2. Master Tomcat Node (Builds the image)
+  tom1cont:
+    build: ./app
+    image: novacart-app:v1
+    container_name: tom1cont
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    environment:
+      - JAVA_OPTS=-Xms128m -Xmx256m
+    networks: [nova-net]
+
+  # 3. Replica Tomcat Node
+  tom2cont:
+    image: novacart-app:v1
+    container_name: tom2cont
+    restart: unless-stopped
+    ports: ["8081:8080"]
+    environment:
+      - JAVA_OPTS=-Xms128m -Xmx256m
+    depends_on: [tom1cont]
+    networks: [nova-net]
+    
+  # 4. Replica Tomcat Node
+  tom3cont:
+    image: novacart-app:v1
+    container_name: tom3cont
+    restart: unless-stopped
+    ports: ["8082:8080"]
+    environment:
+      - JAVA_OPTS=-Xms128m -Xmx256m
+    depends_on: [tom1cont]
+    networks: [nova-net]
+
+  # 5. MySQL Database
+  mysqlcont1:
+    image: mysql:5.7
+    container_name: mysqlcont1
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: adminpassword
+      MYSQL_DATABASE: novacart_db
+    ports:
+      - "3306:3306"
+    networks:
+      - nova-net
+
+networks:
+  nova-net:
+    driver: bridge
